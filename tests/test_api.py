@@ -77,3 +77,31 @@ async def test_date_filter_no_evidence(settings):
         answer = next(e for e in events(response) if e["type"] == "answer")
         assert not answer["citations"]
     await app.state.providers.close()
+
+
+async def test_unrelated_question_after_payment_discussion(settings):
+    app = create_app(settings)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        session = str(uuid4())
+        headers = {"X-API-Key": "a" * 24}
+        first = await client.post(
+            "/chat",
+            headers=headers,
+            json={
+                "session_id": session,
+                "message": "What does the payment retry runbook recommend?",
+            },
+        )
+        first_answer = next(e for e in events(first) if e["type"] == "answer")
+        assert "RUN-001#0" in first_answer["citations"]
+        for question in ["what is the usage of Docker?", "What is Kubernetes?", "What is the?"]:
+            response = await client.post(
+                "/chat", headers=headers, json={"session_id": session, "message": question}
+            )
+            answer = next(e for e in events(response) if e["type"] == "answer")
+            assert answer["sources"] == []
+            assert answer["citations"] == []
+            assert "could not find sufficient authorized evidence" in answer["text"]
+    await app.state.providers.close()
