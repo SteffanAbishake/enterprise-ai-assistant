@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 from uuid import uuid4
@@ -26,6 +27,13 @@ with st.sidebar:
         st.session_state.session_id = str(uuid4())
     st.markdown("Try: **Summarize payment outages and recurring root causes** (analyst key).")
     st.markdown("Try: **Who owns the payments service?** (analyst key, MCP enabled).")
+
+# A changed identity must not retain another identity's chat in the same browser session.
+key_fingerprint = hashlib.sha256(api_key.encode()).hexdigest()
+if st.session_state.get("key_fingerprint") != key_fingerprint:
+    st.session_state.messages = []
+    st.session_state.session_id = str(uuid4())
+    st.session_state.key_fingerprint = key_fingerprint
 
 api_url = os.environ.get("API_URL", "http://localhost:8000")
 st.session_state.setdefault("messages", [])
