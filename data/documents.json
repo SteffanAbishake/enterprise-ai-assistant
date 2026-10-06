@@ -1,0 +1,107 @@
+[
+  {
+    "id": "INC-001",
+    "title": "Payment outage report 1",
+    "department": "payments",
+    "document_type": "incident",
+    "access_level": "internal",
+    "created_date": "2026-01-15",
+    "text": "Payment requests failed after the worker pool exhausted database connections. Cap concurrent workers and increase connection monitoring.",
+    "root_cause": "database connection exhaustion"
+  },
+  {
+    "id": "INC-002",
+    "title": "Payment outage report 2",
+    "department": "payments",
+    "document_type": "incident",
+    "access_level": "internal",
+    "created_date": "2026-02-15",
+    "text": "Payment settlement timed out during a campaign. Missing connection disposal exhausted the pool. Dispose connections and add load tests.",
+    "root_cause": "database connection exhaustion"
+  },
+  {
+    "id": "INC-003",
+    "title": "Payment outage report 3",
+    "department": "payments",
+    "document_type": "incident",
+    "access_level": "internal",
+    "created_date": "2026-03-15",
+    "text": "Payment gateway calls failed because a TLS certificate expired. Renew the certificate and alert thirty days before expiry.",
+    "root_cause": "expired certificate"
+  },
+  {
+    "id": "INC-004",
+    "title": "Payment outage report 4",
+    "department": "payments",
+    "document_type": "incident",
+    "access_level": "internal",
+    "created_date": "2026-04-15",
+    "text": "Payment failures increased when clients retried immediately. Add exponential backoff with jitter and enforce idempotency keys.",
+    "root_cause": "retry amplification"
+  },
+  {
+    "id": "INC-005",
+    "title": "Payment outage report 5",
+    "department": "payments",
+    "document_type": "incident",
+    "access_level": "internal",
+    "created_date": "2026-05-15",
+    "text": "Payment outage followed a downstream timeout. Unbounded retries overloaded the gateway. Bound retries and open a circuit breaker.",
+    "root_cause": "retry amplification"
+  },
+  {
+    "id": "INC-006",
+    "title": "Payment outage report 6",
+    "department": "payments",
+    "document_type": "incident",
+    "access_level": "internal",
+    "created_date": "2026-06-15",
+    "text": "Payment processing stalled during batch processing. Batch and online traffic shared the same pool. Isolate workloads and limit batch concurrency.",
+    "root_cause": "database connection exhaustion"
+  },
+  {
+    "id": "RUN-001",
+    "title": "Payment retry runbook",
+    "department": "payments",
+    "document_type": "runbook",
+    "access_level": "internal",
+    "created_date": "2026-01-10",
+    "text": "For transient payment gateway failures use a maximum of three retries with exponential backoff and jitter. Preserve the same idempotency key across retries. Send exhausted requests to the dead-letter queue. Never retry a confirmed successful payment."
+  },
+  {
+    "id": "ARC-001",
+    "title": "Payment messaging architecture",
+    "department": "platform",
+    "document_type": "architecture",
+    "access_level": "internal",
+    "created_date": "2026-02-10",
+    "text": "The payment API publishes commands to a queue. Workers consume commands and persist idempotency keys before acknowledging completion. Monitoring records correlation IDs across API, queue and worker events."
+  },
+  {
+    "id": "POL-001",
+    "title": "Internal access policy",
+    "department": "platform",
+    "document_type": "policy",
+    "access_level": "internal",
+    "created_date": "2026-01-01",
+    "text": "Viewers can search knowledge. Analysts may run approved analytics and service catalog tools. Administrators manage data. Restricted HR documents are available only to administrators."
+  },
+  {
+    "id": "HR-001",
+    "title": "Restricted workforce planning",
+    "department": "hr",
+    "document_type": "meeting",
+    "access_level": "restricted",
+    "created_date": "2026-04-01",
+    "text": "Fictional confidential workforce plan: Project Cedar staffing allocation is restricted to administrators."
+  },
+  {
+    "id": "PRD-001",
+    "title": "Payment notification specification",
+    "department": "payments",
+    "document_type": "specification",
+    "access_level": "internal",
+    "created_date": "2026-03-01",
+    "text": "Payment notifications include transaction reference, final status and timestamp. No full account numbers or credentials may appear in notifications."
+  }
+]
