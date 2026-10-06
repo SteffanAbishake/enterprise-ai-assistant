@@ -1,12 +1,13 @@
 import asyncio
 import re
 from typing import TypedDict
-from fastapi import HTTPException
-from langgraph.graph import StateGraph, START, END
+
 from langgraph.config import get_stream_writer
+from langgraph.graph import END, START, StateGraph
 from langsmith import traceable
+
 from app.models import Answer
-from app.security import authorize, SUSPICIOUS
+from app.security import SUSPICIOUS, authorize
 from app.tools import analyze, enterprise_lookup
 
 
@@ -41,16 +42,26 @@ def validate_answer(answer, rows):
 
 def extractive(rows):
     if not rows:
-        return {"text": "I could not find sufficient authorized evidence for that question.", "citations": []}
-    return {"text": "Evidence excerpts (not a generated synthesis):\n\n" + "\n\n".join(
-        f"{r['text']} [{r['id']}]" for r in rows[:5]), "citations": [r["id"] for r in rows[:5]]}
+        return {
+            "text": "I could not find sufficient authorized evidence for that question.",
+            "citations": [],
+        }
+    return {
+        "text": "Evidence excerpts (not a generated synthesis):\n\n"
+        + "\n\n".join(f"{r['text']} [{r['id']}]" for r in rows[:5]),
+        "citations": [r["id"] for r in rows[:5]],
+    }
 
 
 def build_graph(settings, retrieval, providers):
     async def supervisor(state):
         message = state["request"].message
         lowered = message.lower()
-        route = "research" if any(w in lowered for w in ["summar", "recurring", "compare", "analy", "all outage"]) else "retrieval"
+        route = (
+            "research"
+            if any(w in lowered for w in ["summar", "recurring", "compare", "analy", "all outage"])
+            else "retrieval"
+        )
         if any(w in lowered for w in ["service owner", "who owns", "service catalog"]):
             route = "tools"
         if route == "research":
@@ -58,9 +69,18 @@ def build_graph(settings, retrieval, providers):
         if route == "tools":
             authorize(state["user"], "mcp")
         # A bounded previous question helps resolve simple follow-ups without loading documents.
-        previous = next((t["content"] for t in reversed(state["history"]) if t["role"] == "user"), "")
-        query = message + (" " + previous if re.search(r"\b(it|those|that|these|they)\b", lowered) else "")
-        event("supervisor", "routed", route=route, reason="Bounded keyword routing; permissions checked")
+        previous = next(
+            (t["content"] for t in reversed(state["history"]) if t["role"] == "user"), ""
+        )
+        query = message + (
+            " " + previous if re.search(r"\b(it|those|that|these|they)\b", lowered) else ""
+        )
+        event(
+            "supervisor",
+            "routed",
+            route=route,
+            reason="Bounded keyword routing; permissions checked",
+        )
         return {"query": query, "route": route, "warnings": []}
 
     async def retrieve(state):
@@ -82,8 +102,12 @@ def build_graph(settings, retrieval, providers):
         return {"counts": await analyze(user, rows), "ids": left["ids"] + right["ids"]}
 
     async def research(state):
-        event("research", "plan", python_plan="filter_authorized -> search -> split_batches(3) -> count_root_causes -> aggregate",
-              scope="At most 12 retrieved sections; not an exhaustive corpus census")
+        event(
+            "research",
+            "plan",
+            python_plan="filter_authorized -> search -> split_batches(3) -> count_root_causes -> aggregate",
+            scope="At most 12 retrieved sections; not an exhaustive corpus census",
+        )
         result = await recursive(state["user"], state["rows"])
         event("research", "complete", analysis=result)
         return {"analysis": result}
@@ -91,12 +115,18 @@ def build_graph(settings, retrieval, providers):
     async def tools_node(state):
         event("tools", "calling", tool="enterprise_mcp")
         if not settings.mcp_enabled:
-            return {"rows": [], "warnings": ["MCP is disabled; enable MCP_ENABLED for the mock service catalog."]}
+            return {
+                "rows": [],
+                "warnings": ["MCP is disabled; enable MCP_ENABLED for the mock service catalog."],
+            }
         try:
             row = await enterprise_lookup(state["user"], settings.tool_timeout_seconds)
             return {"rows": [row], "warnings": []}
         except Exception:
-            return {"rows": [], "warnings": ["Service catalog unavailable; please try again later."]}
+            return {
+                "rows": [],
+                "warnings": ["Service catalog unavailable; please try again later."],
+            }
 
     async def response(state):
         event("response", "generating")
@@ -107,11 +137,15 @@ def build_graph(settings, retrieval, providers):
             try:
                 async with asyncio.timeout(settings.tool_timeout_seconds):
                     evidence = {"sections": rows, "analysis": state.get("analysis", {})}
-                    answer = await providers.complete(state["request"].message, evidence, state["history"])
+                    answer = await providers.complete(
+                        state["request"].message, evidence, state["history"]
+                    )
             except Exception:
                 warnings.append("Language model unavailable; showing evidence excerpts.")
         elif state.get("analysis") and rows:
-            answer["text"] += "\n\nRoot-cause counts within the retrieved evidence: " + str(state["analysis"]["counts"])
+            answer["text"] += "\n\nRoot-cause counts within the retrieved evidence: " + str(
+                state["analysis"]["counts"]
+            )
         return {"answer": answer, "warnings": warnings}
 
     async def validation(state):
@@ -121,23 +155,42 @@ def build_graph(settings, retrieval, providers):
         except (ValueError, TypeError):
             answer = extractive(state.get("rows", []))
             status = "replaced_with_evidence"
-        event("validation", status, check="Schema, citation IDs and content screening; not semantic proof")
+        event(
+            "validation",
+            status,
+            check="Schema, citation IDs and content screening; not semantic proof",
+        )
         # Stream only validated output, not unchecked model tokens.
         for word in answer["text"].split(" "):
             get_stream_writer()({"type": "token", "text": word + " "})
             await asyncio.sleep(0)
-        get_stream_writer()({"type": "answer", **answer, "warnings": state.get("warnings", []),
-                             "sources": state.get("rows", [])})
+        get_stream_writer()(
+            {
+                "type": "answer",
+                **answer,
+                "warnings": state.get("warnings", []),
+                "sources": state.get("rows", []),
+            }
+        )
         return {"answer": answer}
 
     graph = StateGraph(State)
-    for name, function in [("supervisor", supervisor), ("retrieval", retrieve),
-                           ("research", research), ("tools", tools_node),
-                           ("response", response), ("validation", validation)]:
+    for name, function in [
+        ("supervisor", supervisor),
+        ("retrieval", retrieve),
+        ("research", research),
+        ("tools", tools_node),
+        ("response", response),
+        ("validation", validation),
+    ]:
         graph.add_node(name, function)
     graph.add_edge(START, "supervisor")
-    graph.add_conditional_edges("supervisor", lambda s: "tools" if s["route"] == "tools" else "retrieval")
-    graph.add_conditional_edges("retrieval", lambda s: "research" if s["route"] == "research" else "response")
+    graph.add_conditional_edges(
+        "supervisor", lambda s: "tools" if s["route"] == "tools" else "retrieval"
+    )
+    graph.add_conditional_edges(
+        "retrieval", lambda s: "research" if s["route"] == "research" else "response"
+    )
     graph.add_edge("research", "response")
     graph.add_edge("tools", "response")
     graph.add_edge("response", "validation")

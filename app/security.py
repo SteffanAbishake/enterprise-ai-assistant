@@ -3,7 +3,9 @@ import math
 import re
 import secrets
 import time
+
 from fastapi import HTTPException
+
 from app.models import Document, User
 
 PERMISSIONS = {
@@ -14,7 +16,8 @@ PERMISSIONS = {
 SUSPICIOUS = re.compile(
     r"ignore (?:all |previous |the )*(?:instructions|rules)|"
     r"(?:reveal|print|send|exfiltrate).{0,40}(?:secret|api.key|password|system.prompt)|"
-    r"(?:os\.system|subprocess|__import__|eval\(|exec\()", re.I
+    r"(?:os\.system|subprocess|__import__|eval\(|exec\()",
+    re.IGNORECASE,
 )
 
 
@@ -47,6 +50,7 @@ def validate_input(text):
 
 class TokenBucket:
     """Single-process token bucket. A Redis atomic script is needed for multiple workers."""
+
     def __init__(self, capacity, refill, clock=time.monotonic):
         self.capacity, self.refill, self.clock = capacity, refill, clock
         self.buckets = {}

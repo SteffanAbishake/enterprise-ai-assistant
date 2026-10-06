@@ -1,6 +1,7 @@
 from datetime import date
 from typing import Literal
 from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 Role = Literal["viewer", "analyst", "administrator"]

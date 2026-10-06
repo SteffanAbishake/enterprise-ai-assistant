@@ -1,11 +1,13 @@
 import asyncio
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
+
 from fastapi import HTTPException
 
 
 class SessionMemory:
     """Bounded, owner-scoped session memory. Restarts intentionally clear the POC memory."""
+
     def __init__(self):
         self.turns = {}
         self.locks = defaultdict(asyncio.Lock)

@@ -1,6 +1,7 @@
 from typing import Literal
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from pydantic import Field, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -29,8 +30,15 @@ class Settings(BaseSettings):
         if any(len(k) < 16 for k in keys) or len(set(keys)) != 3:
             raise ValueError("Set three distinct API keys of at least 16 characters in .env")
         if self.app_mode == "live":
-            if not all([self.openai_api_key, self.pinecone_api_key,
-                        self.pinecone_host, self.langsmith_api_key, self.langsmith_tracing]):
+            if not all(
+                [
+                    self.openai_api_key,
+                    self.pinecone_api_key,
+                    self.pinecone_host,
+                    self.langsmith_api_key,
+                    self.langsmith_tracing,
+                ]
+            ):
                 raise ValueError("Live mode requires OpenAI, Pinecone and enabled LangSmith")
             if not self.pinecone_host.startswith("https://"):
                 raise ValueError("Pinecone host must use HTTPS")
