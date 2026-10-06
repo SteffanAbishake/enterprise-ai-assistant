@@ -13,4 +13,4 @@ jobs:
           cache: pip
       - run: pip install -r requirements.lock
       - run: ruff check .
-      - run: pytest -q
+      - run: python -m pytest -q
