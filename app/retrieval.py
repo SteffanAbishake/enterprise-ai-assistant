@@ -12,8 +12,19 @@ from app.security import SUSPICIOUS, allowed, authorize
 DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "documents.json"
 
 
+# Question phrasing must not count as evidence of a topic match. Apply the
+# same normalization to documents and queries; retain domain words and numbers.
+STOP_WORDS = frozenset(
+    "a an the and or but of for to in on at by from with without is are was were "
+    "be been being do does did can could should would will shall may might "
+    "i me my we our you your he she it its they them their this that these those "
+    "what which who whom whose where when why how about as all any some "
+    "please tell explain describe give show usage use used purpose".split()
+)
+
+
 def tokens(text):
-    return re.findall(r"[a-z0-9]+", text.lower())
+    return [term for term in re.findall(r"[a-z0-9]+", text.lower()) if term not in STOP_WORDS]
 
 
 def load_documents():
@@ -77,9 +88,11 @@ class Retrieval:
             return [], []
 
         def sparse_search():
-            scores = BM25Okapi([tokens(c["text"] + " " + c["title"]) for c in sections]).get_scores(
-                tokens(query)
-            )
+            query_terms = tokens(query)
+            corpus = [tokens(c["text"] + " " + c["title"]) for c in sections]
+            if not query_terms or not any(corpus):
+                return []
+            scores = BM25Okapi(corpus).get_scores(query_terms)
             return [
                 sections[i]
                 for i in sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
